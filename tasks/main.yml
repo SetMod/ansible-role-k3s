@@ -2,4 +2,31 @@
 
 - import_tasks: pre_checks.yml
 
-- include_tasks: state_{{ (k3s_state | lower) | default('installed') }}.yml
+- import_tasks: ensure_pre_configuration.yml
+
+- include_tasks: state_downloaded.yml
+  when:
+    - k3s_state == "downloaded" or
+      k3s_state == "installed"
+
+- include_tasks: state_installed.yml
+  when:
+    - k3s_state == "installed"
+
+- include_tasks: state_uninstalled.yml
+  when:
+    - k3s_state == "uninstalled"
+
+- include_tasks: state_validated.yml
+  when:
+    - k3s_state == "validated"
+
+- include_tasks: state_started.yml
+  when:
+    - k3s_state == "started" or
+      k3s_state == "restarted"
+
+- include_tasks: state_stopped.yml
+  when:
+    - k3s_state == "stopped" or
+      k3s_state == "restarted"

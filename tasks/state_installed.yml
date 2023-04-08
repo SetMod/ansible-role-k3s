@@ -1,30 +1,35 @@
 ---
-
 - import_tasks: ensure_drain_and_remove_nodes.yml
 
-- import_tasks: determine_systemd_context.yml
+- import_tasks: ensure_configure_manifests.yml
+  when:
+    - k3s_primary_control_node
+
+- import_tasks: ensure_configure_additional.yml
+
+- include_tasks: ensure_directories.yml
+
+- include_tasks: ensure_configure_node.yml
+  when:
+    - (k3s_control_node and k3s_controller_list | length == 1) or
+      (k3s_primary_control_node and k3s_controller_list | length > 1)
+    - not ansible_check_mode
 
 - name: Flush Handlers
   ansible.builtin.meta: flush_handlers
 
-- import_tasks: ensure_downloads.yml
-  when: not k3s_airgap
+- include_tasks: ensure_configure_node.yml
+  when: k3s_build_cluster
 
-- import_tasks: ensure_uploads.yml
-  when: k3s_airgap
+- name: Determine if the systems are already clustered
+  ansible.builtin.stat:
+    path: "{{ k3s_token_location }}"
+  register: k3s_token_cluster_check
 
-- import_tasks: ensure_k3s_auto_deploy.yml
-  when:
-    - k3s_primary_control_node
-
-- import_tasks: ensure_k3s_config_files.yml
-
-- import_tasks: ensure_installed.yml
-
-- include_tasks: ensure_containerd_registries.yml
-  when:
-    - k3s_registries is defined
-    - ('rootless' not in k3s_runtime_config or not k3s_runtime_config.rootless)
+- include_tasks: ensure_control_plane_started.yml
+  when: (k3s_control_node and k3s_controller_list | length == 1) or
+        (k3s_primary_control_node and k3s_controller_list | length > 1) or
+        k3s_token_cluster_check.stat.exists
 
 - include_tasks: pre_checks_cluster.yml
   when:

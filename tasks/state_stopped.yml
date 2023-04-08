@@ -1,3 +1,11 @@
 ---
 
-- import_tasks: ensure_stopped.yml
+- name: Ensure k3s systemd service is stopped
+  when:
+    - k3s_service_handler[ansible_service_mgr] == 'systemd'
+  ansible.builtin.systemd:
+    name: k3s
+    state: stopped
+    enabled: "{{ k3s_start_on_boot }}"
+    scope: "{{ k3s_systemd_context }}"
+  become: "{{ k3s_become }}"
