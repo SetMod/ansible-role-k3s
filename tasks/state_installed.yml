@@ -36,7 +36,7 @@
     - k3s_control_delegate is defined
     - k3s_control_delegate == inventory_hostname
 
-- import_tasks: ensure_cluster.yml
+- import_tasks: ensure_configure_cluster.yml
   when:
     - k3s_build_cluster is defined
     - k3s_build_cluster

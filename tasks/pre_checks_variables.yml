@@ -1,6 +1,6 @@
 ---
 
-- name: "Check that k3s_release_version >= {{ k3s_min_version }}"
+- name: Check that k3s_release_version >= {{ k3s_min_version }}
   ansible.builtin.assert:
     that:
       - (k3s_release_version | replace('v', '')) is version_compare(k3s_min_version, '>=')
