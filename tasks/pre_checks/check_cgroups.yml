@@ -1,6 +1,6 @@
 ---
 
-- name: Check if {{ cgroup.name }} cgroup is enabled
+- name: Check if cgroup is enabled '{{ cgroup.name }}'
   ansible.builtin.command:
     cmd: 'grep -E "^{{ cgroup.name }}\s+.*\s+1$" /proc/cgroups'
   failed_when: false
@@ -8,7 +8,7 @@
   check_mode: false
   register: k3s_check_cgroup_option
 
-- name: Fail if {{ cgroup.name }} cgroup is not enabled
+- name: Fail if cgroup is not enabled '{{ cgroup.name }}'
   ansible.builtin.assert:
     that:
       - k3s_check_cgroup_option.rc == 0

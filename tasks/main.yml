@@ -1,5 +1,55 @@
 ---
 
-- import_tasks: pre_checks.yml
+- name: Import pre checks tasks
+  ansible.builtin.import_tasks: pre_checks.yml
+  tags:
+    - always
 
-- include_tasks: state_{{ (k3s_state | lower) | default('installed') }}.yml
+- name: Import pre configuration tasks
+  ansible.builtin.import_tasks: ensure_pre_configuration.yml
+  tags:
+    - always
+
+- name: Import tasks for state 'validated'
+  ansible.builtin.import_tasks: state_validated.yml
+  when: k3s_state == "validated"
+  tags:
+    - k3s_validate
+
+- name: Import tasks for state 'downloaded'
+  ansible.builtin.import_tasks: state_downloaded.yml
+  when: k3s_state == "downloaded"
+        or k3s_state == "installed"
+  tags:
+    - k3s_download
+    - k3s_install
+
+- name: Import tasks for state 'installed'
+  ansible.builtin.import_tasks: state_installed.yml
+  when: k3s_state == "installed"
+  tags:
+    - k3s_install
+
+- name: Import tasks for state 'uninstalled'
+  ansible.builtin.import_tasks: state_uninstalled.yml
+  when: k3s_state == "uninstalled"
+  tags:
+    - k3s_uninstall
+
+- name: Import tasks for state 'stopped'
+  ansible.builtin.import_tasks: state_stopped.yml
+  when: k3s_state == "stopped"
+  tags:
+    - k3s_stop
+
+- name: Import tasks for state 'started'
+  ansible.builtin.import_tasks: state_started.yml
+  when: k3s_state == "started"
+  tags:
+    - k3s_start
+
+- name: Import tasks for state 'restarted'
+  ansible.builtin.import_tasks: state_restarted.yml
+  when: k3s_state == "restarted"
+  tags:
+    - k3s_restart

@@ -17,6 +17,20 @@
     - "Restart k3s {{ k3s_service_handler[ansible_service_mgr] }}"
   become: "{{ k3s_become }}"
 
+- name: Ensure containerd registries file exists
+  ansible.builtin.template:
+    src: registries.yaml.j2
+    dest: "{{ k3s_config_dir }}/registries.yaml"
+    mode: 0600
+  when:
+    - k3s_registries is defined
+    - ('rootless' not in k3s_runtime_config
+      or not k3s_runtime_config.rootless)
+  notify:
+    - "Reload {{ k3s_service_handler[ansible_service_mgr] }}"
+    - "Restart k3s {{ k3s_service_handler[ansible_service_mgr] }}"
+  become: "{{ k3s_become }}"
+
 - name: Ensure k3s config file exists
   ansible.builtin.template:
     src: config.yaml.j2
@@ -28,6 +42,7 @@
   become: "{{ k3s_become }}"
 
 - name: Ensure cluster token is present when pre-defined
+  when: k3s_control_token is defined
   block:
     - name: Ensure the cluster token file location exists
       ansible.builtin.file:
@@ -44,7 +59,6 @@
       become: "{{ k3s_become }}"
       notify:
         - "Restart k3s {{ k3s_service_handler[ansible_service_mgr] }}"
-  when: k3s_control_token is defined
 
 - name: Ensure k3s service unit file is present
   ansible.builtin.template:
@@ -85,7 +99,7 @@
 - name: Ensure k3s killall script is present
   ansible.builtin.template:
     src: k3s-killall.sh.j2
-    dest: "/usr/local/bin/k3s-killall.sh"
+    dest: /usr/local/bin/k3s-killall.sh
     mode: 0700
   become: "{{ k3s_become }}"
   when:
@@ -95,7 +109,7 @@
 - name: Ensure k3s uninstall script is present
   ansible.builtin.template:
     src: k3s-uninstall.sh.j2
-    dest: "/usr/local/bin/k3s-uninstall.sh"
+    dest: /usr/local/bin/k3s-uninstall.sh
     mode: 0700
   become: "{{ k3s_become }}"
   when:

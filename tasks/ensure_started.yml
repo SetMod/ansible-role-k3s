@@ -1,20 +1,32 @@
 ---
 
-- name: Ensure k3s service is started
+- name: Ensure k3s control plane server systemd service is started
+  when: k3s_service_handler[ansible_service_mgr] == 'systemd'
   ansible.builtin.systemd:
     name: k3s
     state: started
     enabled: "{{ k3s_start_on_boot }}"
-  when: k3s_non_root is not defined or not k3s_non_root
+    scope: "{{ k3s_systemd_context }}"
+  register: k3s_systemd_start_k3s
+  until: k3s_systemd_start_k3s is succeeded
+  retries: 3
+  delay: 3
+  failed_when:
+    - k3s_systemd_start_k3s is not succeeded
+    - not ansible_check_mode
   become: "{{ k3s_become }}"
 
-- name: Ensure k3s service is started
-  ansible.builtin.systemd:
+- name: Ensure k3s control plane server openrc service is started
+  when: k3s_service_handler[ansible_service_mgr] == 'service'
+  ansible.builtin.service:
     name: k3s
     state: started
     enabled: "{{ k3s_start_on_boot }}"
-    scope: user
-  when:
-    - k3s_non_root is defined
-    - k3s_non_root
+  register: k3s_service_start_k3s
+  until: k3s_service_start_k3s is succeeded
+  retries: 3
+  delay: 3
+  failed_when:
+    - k3s_service_start_k3s is not succeeded
+    - not ansible_check_mode
   become: "{{ k3s_become }}"

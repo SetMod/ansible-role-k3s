@@ -1,0 +1,59 @@
+---
+
+- name: Ensure cluster token block
+  when:
+    - k3s_control_token is not defined
+    - not ansible_check_mode
+  block:
+    - name: Ensure cluster token is captured from {{ k3s_control_delegate }}
+      ansible.builtin.slurp:
+        path: "{{ k3s_runtime_config['data-dir'] | default(k3s_data_dir) }}/server/token"
+      register: k3s_slurped_cluster_token
+      delegate_to: "{{ k3s_control_delegate }}"
+      become: "{{ k3s_become }}"
+
+    - name: Ensure cluster token is formatted correctly for use in templates
+      ansible.builtin.set_fact:
+        k3s_control_token_content: "{{ k3s_control_token | default(k3s_slurped_cluster_token.content | b64decode) }}"
+
+- name: Ensure dummy cluster token is defined for ansible_check_mode
+  ansible.builtin.set_fact:
+    k3s_control_token_content: "{{ k3s_control_delegate | to_uuid }}"
+  check_mode: false
+  when: ansible_check_mode
+
+- name: Ensure the cluster token file location exists
+  ansible.builtin.file:
+    path: "{{ k3s_token_location | dirname }}"
+    state: directory
+    mode: 0755
+  become: "{{ k3s_become }}"
+
+- name: Ensure k3s cluster token file is present
+  ansible.builtin.template:
+    src: cluster-token.j2
+    dest: "{{ k3s_token_location }}"
+    mode: 0600
+  become: "{{ k3s_become }}"
+  notify:
+    - Restart k3s {{ k3s_service_handler[ansible_service_mgr] }}
+
+- name: Include secondary control planes started tasks
+  ansible.builtin.include_tasks: ensure_started.yml
+  when:
+    - k3s_control_node
+    - not k3s_primary_control_node
+
+- name: Flush Handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Post checks block
+  when:
+    - not k3s_skip_validation
+    - not k3s_skip_post_checks
+  block:
+    - name: Import post check control plane tasks
+      ansible.builtin.import_tasks: post_checks/check_control_plane.yml
+
+    - name: Import post checks nodes tasks
+      ansible.builtin.import_tasks: post_checks/check_nodes.yml

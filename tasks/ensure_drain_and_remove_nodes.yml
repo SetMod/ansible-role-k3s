@@ -7,8 +7,12 @@
   become: "{{ k3s_become }}"
 
 - name: Clean up nodes that are in an uninstalled state
+  when:
+    - k3s_check_kubectl.stat.exists is defined
+    - k3s_check_kubectl.stat.exists
+    - k3s_control_delegate is defined
+    - not ansible_check_mode
   block:
-
     - name: Gather a list of nodes
       ansible.builtin.command:
         cmd: "{{ k3s_install_dir }}/kubectl get nodes"
@@ -28,9 +32,12 @@
             --force
       delegate_to: "{{ k3s_control_delegate }}"
       run_once: true
+      register: kubectl_drain_result
+      changed_when: kubectl_drain_result != 0
       when:
         - kubectl_get_nodes_result.stdout is defined
         - item in kubectl_get_nodes_result.stdout
+        - item != k3s_control_delegate
         - hostvars[item].k3s_state is defined
         - hostvars[item].k3s_state == 'uninstalled'
       loop: "{{ ansible_play_hosts }}"
@@ -41,16 +48,49 @@
         cmd: "{{ k3s_install_dir }}/kubectl delete node {{ item }}"
       delegate_to: "{{ k3s_control_delegate }}"
       run_once: true
+      register: kubectl_delete_node_result
+      changed_when: kubectl_delete_node_result != 0
       when:
         - kubectl_get_nodes_result.stdout is defined
         - item in kubectl_get_nodes_result.stdout
+        - item != k3s_control_delegate
         - hostvars[item].k3s_state is defined
         - hostvars[item].k3s_state == 'uninstalled'
       loop: "{{ ansible_play_hosts }}"
       become: "{{ k3s_become }}"
 
-  when:
-    - k3s_check_kubectl.stat.exists is defined
-    - k3s_check_kubectl.stat.exists
-    - k3s_control_delegate is defined
-    - not ansible_check_mode
+    - name: Ensure uninstalled delegeted node is drained
+      ansible.builtin.command:
+        cmd: >-
+          {{ k3s_install_dir }}/kubectl drain {{ item }}
+            --ignore-daemonsets
+            --{{ k3s_drain_command[ansible_version.string is version_compare('1.22', '>=')] }}
+            --force
+      delegate_to: "{{ k3s_control_delegate }}"
+      run_once: true
+      register: kubectl_drain_result
+      changed_when: kubectl_drain_result != 0
+      when:
+        - kubectl_get_nodes_result.stdout is defined
+        - item in kubectl_get_nodes_result.stdout
+        - item == k3s_control_delegate
+        - hostvars[item].k3s_state is defined
+        - hostvars[item].k3s_state == 'uninstalled'
+      loop: "{{ ansible_play_hosts }}"
+      become: "{{ k3s_become }}"
+
+    - name: Ensure uninstalled delegated node is removed
+      ansible.builtin.command:
+        cmd: "{{ k3s_install_dir }}/kubectl delete node {{ item }}"
+      delegate_to: "{{ k3s_control_delegate }}"
+      run_once: true
+      register: kubectl_delete_node_result
+      changed_when: kubectl_delete_node_result != 0
+      when:
+        - kubectl_get_nodes_result.stdout is defined
+        - item in kubectl_get_nodes_result.stdout
+        - item == k3s_control_delegate
+        - hostvars[item].k3s_state is defined
+        - hostvars[item].k3s_state == 'uninstalled'
+      loop: "{{ ansible_play_hosts }}"
+      become: "{{ k3s_become }}"

@@ -1,6 +1,6 @@
 ---
 
-- name: Check that {{ package.name }} is installed
+- name: Check that package is installed '{{ package.name }} '
   ansible.builtin.command:
     cmd: "which {{ package.name }}"
   changed_when: false
@@ -8,7 +8,7 @@
   register: check_k3s_required_package
   become: "{{ k3s_become }}"
 
-- name: Test that checks for {{ package.name }} passed
+- name: Test that checks for package passed '{{ package.name }} '
   ansible.builtin.assert:
     that:
       - check_k3s_required_package.rc == 0
@@ -21,6 +21,6 @@
   when:
     - check_k3s_required_package.rc is defined
     - (package.until is not defined
-       or (k3s_release_version | replace('v', '')) is version_compare(package.until, '<'))
+      or (k3s_release_version | replace('v', '')) is version_compare(package.until, '<'))
     - (package.from is not defined
-       or (k3s_release_version | replace('v', '')) is version_compare(package.from, '>='))
+      or (k3s_release_version | replace('v', '')) is version_compare(package.from, '>='))
